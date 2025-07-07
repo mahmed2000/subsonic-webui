@@ -6,6 +6,7 @@
 </head>
 
 <body>
+  <!-- Dialog shown on load. Credentials API isn't standard yet across browsers, what can you do -->
   <dialog>
     <form method="dialog">
       <h1>Subsonic Login</h1>
@@ -23,6 +24,20 @@
       <p id="error"></p>
     </form>
   </dialog>
+
+  <!-- Main holds directory nav. Button to return to root for convenience. Will follow the same conventions as github/forgejo having .. to go up one dir. -->
+  <main>
+    <button type="submit">Root</button>
+    <ul id="curr-dir">
+    </ul>
+  </main>
+  <!-- Aside holds metadata about the playing song. Side drawer on landscape, bottom drawer on portrait -->
+  <aside>
+    <h2 id="aside-title"></h2>
+    <h4 id="aside-album"></h4>
+    <img src="about:blank" id="aside-cover" />
+    <audio controls src="about:blank" id="aside-audio"></audio>
+  </aside>
 </body>
 
 </html>
