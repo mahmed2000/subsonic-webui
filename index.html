@@ -23,7 +23,7 @@
       * @param {string} view
       * @param {URLSearchParams} params
       */
-      async request(view, params) {
+      build_request(view, params) {
         // see https://opensubsonic.netlify.app/docs/api-reference/
         params.append("u", this.username);
         params.append("v", "1.16.0");
@@ -42,7 +42,15 @@
         params.append("t", token);
         params.append("s", salt);
 
-        return await (await fetch(`${this.server}/rest/${view}?${params}`)).json();
+        return `${this.server}/rest/${view}?${params}`;
+      }
+
+      /**
+      * @param {string} view
+      * @param {URLSearchParams} params
+      */
+      async json_request(view, params) {
+        return await (await fetch(this.build_request(view, params))).json();
       }
     }
   </script>
