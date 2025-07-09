@@ -52,7 +52,11 @@
       * @param {URLSearchParams} params
       */
       async json_request(view, params) {
-        return await (await fetch(this.build_request(view, params))).json();
+        let resp = (await (await fetch(this.build_request(view, params))).json())["subsonic-response"];
+        if (resp.status != "ok") {
+          throw new Error(resp.error.message);
+        }
+        return resp;
       }
     }
 
@@ -65,10 +69,7 @@
         let creds = new FormData(ev.target);
         subsonic_handler = new SubsonicHandler(creds.get("server"), creds.get("name"), creds.get("password"));
         try {
-          let resp = (await subsonic_handler.json_request("ping", new URLSearchParams()))["subsonic-response"];
-          if (resp.status != "ok") {
-            throw new Error(resp.error.message);
-          }
+          let resp = await subsonic_handler.json_request("ping", new URLSearchParams());
           err_msg.innerText = "";
         } catch (err) {
           document.querySelector("form #error").innerText = err.toString();
