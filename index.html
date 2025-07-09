@@ -7,6 +7,8 @@
   <!-- Alternative would be to rely on plain password, the OSS POST extension or the OSS API key extension. -->
   <script src="https://pajhome.org.uk/crypt/md5/md5.js"></script>
   <script>
+    let subsonic_handler;
+
     class SubsonicHandler {
       /**
       * @param {string} server
@@ -53,22 +55,43 @@
         return await (await fetch(this.build_request(view, params))).json();
       }
     }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const dialog = document.querySelector("dialog");
+      const err_msg = document.querySelector("form #error");
+      dialog.showModal();
+
+      document.querySelector("form#auth").addEventListener("submit", async (ev) => {
+        let creds = new FormData(ev.target);
+        subsonic_handler = new SubsonicHandler(creds.get("server"), creds.get("name"), creds.get("password"));
+        try {
+          let resp = (await subsonic_handler.json_request("ping", new URLSearchParams()))["subsonic-response"];
+          if (resp.status != "ok") {
+            throw new Error(resp.error.message);
+          }
+          err_msg.innerText = "";
+        } catch (err) {
+          document.querySelector("form #error").innerText = err.toString();
+          document.querySelector("dialog").showModal();
+        }
+      })
+    });
   </script>
 </head>
 
 <body>
   <!-- Dialog shown on load. Credentials API isn't standard yet across browsers, what can you do -->
   <dialog>
-    <form method="dialog">
+    <form id="auth" method="dialog">
       <h1>Subsonic Login</h1>
       <label for="auth-server">Server: </label>
-      <input id="auth-server" name="server" type="url" placeholder="https://demo.navidrome.org" />
+      <input id="auth-server" name="server" type="url" placeholder="https://demo.navidrome.org" required />
 
       <label for="auth-name">Username: </label>
-      <input id="auth-name" name="name" type="text" placeholder="demo" />
+      <input id="auth-name" name="name" type="text" placeholder="demo" required />
 
       <label for="auth-pass">Password: </label>
-      <input id="auth-pass" name="password" type="password" placeholder="demo" />
+      <input id="auth-pass" name="password" type="password" placeholder="demo" required />
 
       <button type="submit">Login</button>
 
