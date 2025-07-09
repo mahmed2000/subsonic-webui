@@ -154,6 +154,10 @@
         return el;
       }
 
+      /**
+      * @param {string | null} song_id
+      * @param {string} text
+      */
       make_play(song_id, text) {
         let el = document.createElement("li");
         el.classList.add("song");
@@ -167,6 +171,11 @@
 
         el.replaceChildren(button);
         return el;
+      }
+
+      reset() {
+        this.nav_chain = [];
+        this.populate_dir(null);
       }
     }
 
@@ -187,6 +196,7 @@
           let metadata = await this.client.json_request("getSong", new URLSearchParams({id: song_id}));
           this.player_section.querySelector("h2#aside-title").innerText = metadata.song.title;
           this.player_section.querySelector("h4#aside-album").innerText = metadata.song.album;
+          // for later reuse. Since this has auth creds, not a good idea for anything beyond a toy project
           let artwork = this.client.build_request("getCoverArt", new URLSearchParams({id: metadata.song.coverArt}));
           this.player_section.querySelector("img#aside-cover").setAttribute("src", artwork);
           this.player_section.querySelector("audio#aside-audio").setAttribute("src", this.client.build_request("stream", new URLSearchParams({id: metadata.song.id})));
@@ -209,6 +219,8 @@
       const err_msg = document.querySelector("form #error");
       dialog.showModal();
 
+      let browser;
+
       document.querySelector("form#auth").addEventListener("submit", async (ev) => {
         let creds = new FormData(ev.target);
         let subsonic_handler = new SubsonicHandler(creds.get("server"), creds.get("name"), creds.get("password"));
@@ -216,14 +228,23 @@
           let resp = await subsonic_handler.json_request("ping", new URLSearchParams());
           err_msg.innerText = "";
           let player = new Player(subsonic_handler);
-          let browser = new Browser(subsonic_handler, player);
+          browser = new Browser(subsonic_handler, player);
         } catch (err) {
           document.querySelector("form #error").innerText = err.toString();
-          document.querySelector("dialog").showModal();
+          // in about every conceivable network setup (maybe besides having the server on the same machine and requesting over loopback)
+          // the modal should close from submission before the response comes back.
+          // a better solution would simply be to preventDefault, but I am lazy.
+          dialog.showModal();
         }
-      })
+      });
+
+      document.querySelector("main button#dir-reset").addEventListener("click", () => {
+        browser.reset();
+      });
     });
   </script>
+
+
 </head>
 
 <body>
@@ -246,14 +267,14 @@
     </form>
   </dialog>
 
-  <!-- Main holds directory nav. Button to return to root for convenience. Will follow the same conventions as github/forgejo having .. to go up one dir. -->
+  <!-- Main holds directory nav. Button to return to root for convenience. Will follow the same conventions as github/forgejo having ".." to go up one dir. -->
   <main>
-    <button type="submit">Root</button>
+    <button id="dir-reset" type="submit">Root</button>
     <ul id="curr-dir">
     </ul>
   </main>
 
-  <!-- Aside holds metadata about the playing song. Side drawer on landscape, bottom drawer on portrait -->
+  <!-- Aside holds metadata about the playing song and the actual audio element. Side drawer on landscape, bottom drawer on portrait -->
   <aside>
     <h2 id="aside-title"></h2>
     <h4 id="aside-album"></h4>
