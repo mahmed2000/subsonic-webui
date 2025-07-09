@@ -187,8 +187,17 @@
           let metadata = await this.client.json_request("getSong", new URLSearchParams({id: song_id}));
           this.player_section.querySelector("h2#aside-title").innerText = metadata.song.title;
           this.player_section.querySelector("h4#aside-album").innerText = metadata.song.album;
-          this.player_section.querySelector("img#aside-cover").setAttribute("src", this.client.build_request("getCoverArt", new URLSearchParams({id: metadata.song.coverArt})));
+          let artwork = this.client.build_request("getCoverArt", new URLSearchParams({id: metadata.song.coverArt}));
+          this.player_section.querySelector("img#aside-cover").setAttribute("src", artwork);
           this.player_section.querySelector("audio#aside-audio").setAttribute("src", this.client.build_request("stream", new URLSearchParams({id: metadata.song.id})));
+
+          if ("mediaSession" in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: metadata.song.title,
+              album: metadata.song.album,
+              artwork: [{src: artwork}],
+            })
+          }
         } catch (err) {
           window.setInterval(this.play, 5000, song_id);
         }
