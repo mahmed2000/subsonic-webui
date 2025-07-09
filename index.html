@@ -61,9 +61,11 @@
     class Browser {
       /**
       * @param {SubsonicHandler} client
+      * @param {Player} player
       */
-      constructor(client) {
+      constructor(client, player) {
         this.client = client;
+        this.player = player;
         this.dir_listing = document.querySelector("ul#curr-dir");
         this.nav_chain = [];
 
@@ -160,11 +162,36 @@
         button.innerText = text;
 
         button.addEventListener("click", () => {
-          console.log(song_id);
+          this.player.play(song_id);
         });
 
         el.replaceChildren(button);
         return el;
+      }
+    }
+
+    class Player {
+      /**
+      * @param {SubsonicHandler} client
+      */
+      constructor(client) {
+        this.client = client;
+        this.player_section = document.querySelector("aside");
+      }
+
+      /**
+      * @param {string} song_id
+      */
+      async play(song_id) {
+        try {
+          let metadata = await this.client.json_request("getSong", new URLSearchParams({id: song_id}));
+          this.player_section.querySelector("h2#aside-title").innerText = metadata.song.title;
+          this.player_section.querySelector("h4#aside-album").innerText = metadata.song.album;
+          this.player_section.querySelector("img#aside-cover").setAttribute("src", this.client.build_request("getCoverArt", new URLSearchParams({id: metadata.song.coverArt})));
+          this.player_section.querySelector("audio#aside-audio").setAttribute("src", this.client.build_request("stream", new URLSearchParams({id: metadata.song.id})));
+        } catch (err) {
+          window.setInterval(this.play, 5000, song_id);
+        }
       }
     }
 
@@ -179,7 +206,8 @@
         try {
           let resp = await subsonic_handler.json_request("ping", new URLSearchParams());
           err_msg.innerText = "";
-          let browser = new Browser(subsonic_handler);
+          let player = new Player(subsonic_handler);
+          let browser = new Browser(subsonic_handler, player);
         } catch (err) {
           document.querySelector("form #error").innerText = err.toString();
           document.querySelector("dialog").showModal();
