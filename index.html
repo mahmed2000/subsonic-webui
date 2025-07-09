@@ -7,8 +7,6 @@
   <!-- Alternative would be to rely on plain password, the OSS POST extension or the OSS API key extension. -->
   <script src="https://pajhome.org.uk/crypt/md5/md5.js"></script>
   <script>
-    let subsonic_handler;
-
     class SubsonicHandler {
       /**
       * @param {string} server
@@ -60,6 +58,116 @@
       }
     }
 
+    class Browser {
+      /**
+      * @param {SubsonicHandler} client
+      */
+      constructor(client) {
+        this.client = client;
+        this.dir_listing = document.querySelector("ul#curr-dir");
+        this.nav_chain = [];
+
+        this.populate_dir(null);
+      }
+
+      /**
+      * @param {string | null} dir_id
+      */
+      async populate_dir(dir_id) {
+        let dirs = {};
+        let songs = {};
+        try {
+          // dir_id is either an id or null. Null indicates root, which doesn't have an ID with defined value across servers.
+          // getIndexes returns both "childs" and "indexes", essentially files and folders,
+          // get getMusicDirectory only returns "childs", which may be either files or folders.
+          // confused? good.
+          let children; // list of "child" objects.
+          if (dir_id) {
+            let resp = await this.client.json_request("getMusicDirectory", new URLSearchParams({id: dir_id}));
+            console.log(resp);
+            children = resp.directory.child;
+          } else {
+            let resp = await this.client.json_request("getIndexes", new URLSearchParams());
+            console.log(resp);
+            for (let index of resp.indexes.index) {
+              for (let dir of index.artist) {
+                dirs[dir.id] = dir.name;
+              }
+            }
+            children = resp.indexes.child;
+          }
+
+          if (children) {
+            for (let child of children) {
+              if (child.isDir) {
+                dirs[child.id] = child.title;
+              } else {
+                songs[child.id] = child.title;
+              }
+            }
+          }
+
+        } catch (err) {
+          console.error(err);
+          window.setTimeout(this.populate_dir, 5000, dir_id); // if something fails, try again. Only problem in active use should be networking, which nothing to do but test
+          return;
+        }
+
+        // part 2, add buttons for navigation
+        let entries = [];
+        if (this.nav_chain.length > 0) {
+          entries.push(this.make_link(null, ".."));
+        }
+        for (let [id, name] of Object.entries(dirs)) {
+          entries.push(this.make_link(id, name));
+        }
+
+        for (let [id, name] of Object.entries(songs)) {
+          entries.push(this.make_play(id, name));
+        }
+
+        this.dir_listing.replaceChildren(...entries);
+      }
+
+      /**
+      * @param {string | null} dir_id
+      * @param {string} text
+      */
+      make_link(dir_id, text) {
+        let el = document.createElement("li");
+        el.classList.add("dir");
+        let button = document.createElement("button");
+        button.type = "button";
+        button.innerText = text;
+        button.addEventListener("click", () => {
+          if (dir_id) {
+            this.populate_dir(dir_id);
+            this.nav_chain.push(dir_id);
+          } else {
+            this.populate_dir(this.nav_chain.length > 1 ? this.nav_chain[this.nav_chain.length - 2] : null);
+            this.nav_chain.pop();
+          }
+        });
+        el.replaceChildren(button);
+        return el;
+      }
+
+      make_play(song_id, text) {
+        let el = document.createElement("li");
+        el.classList.add("song");
+        let button = document.createElement("button");
+        button.type = "button";
+        button.innerText = text;
+
+        button.addEventListener("click", () => {
+          console.log(song_id);
+        });
+
+        el.replaceChildren(button);
+        return el;
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       const dialog = document.querySelector("dialog");
       const err_msg = document.querySelector("form #error");
@@ -67,10 +175,11 @@
 
       document.querySelector("form#auth").addEventListener("submit", async (ev) => {
         let creds = new FormData(ev.target);
-        subsonic_handler = new SubsonicHandler(creds.get("server"), creds.get("name"), creds.get("password"));
+        let subsonic_handler = new SubsonicHandler(creds.get("server"), creds.get("name"), creds.get("password"));
         try {
           let resp = await subsonic_handler.json_request("ping", new URLSearchParams());
           err_msg.innerText = "";
+          let browser = new Browser(subsonic_handler);
         } catch (err) {
           document.querySelector("form #error").innerText = err.toString();
           document.querySelector("dialog").showModal();
