@@ -3,6 +3,49 @@
 
 <head>
   <title>Subsonic Webui</title>
+  <!-- MD5 implementation, because js doesn't have a builtin for it -->
+  <!-- Alternative would be to rely on plain password, the OSS POST extension or the OSS API key extension. -->
+  <script src="https://pajhome.org.uk/crypt/md5/md5.js"></script>
+  <script>
+    class SubsonicHandler {
+      /**
+      * @param {string} server
+      * @param {string} username
+      * @param {string} password
+      */
+      constructor(server, username, password) {
+        this.username = username;
+        this.server = server;
+        this.password = password;
+      }
+
+      /**
+      * @param {string} view
+      * @param {URLSearchParams} params
+      */
+      async request(view, params) {
+        // see https://opensubsonic.netlify.app/docs/api-reference/
+        params.append("u", this.username);
+        params.append("v", "1.16.0");
+        params.append("c", "subsonic-webui");
+        params.append("f", "json");
+
+        // ideally would use the crypto lib for both md5 and salt gen.
+        // Why didn't I just do that? Spite and sunk cost. Mostly spite.
+        let salt = "";
+        for (let i = 0; i < 4; i++) {
+          let rand = Math.floor(Math.random() * 255).toString(16).padStart(2, '0');
+          salt = salt + rand;
+        }
+
+        let token = hex_md5(`${this.password}${salt}`);
+        params.append("t", token);
+        params.append("s", salt);
+
+        return await (await fetch(`${this.server}/rest/${view}?${params}`)).json();
+      }
+    }
+  </script>
 </head>
 
 <body>
@@ -31,6 +74,7 @@
     <ul id="curr-dir">
     </ul>
   </main>
+
   <!-- Aside holds metadata about the playing song. Side drawer on landscape, bottom drawer on portrait -->
   <aside>
     <h2 id="aside-title"></h2>
