@@ -186,6 +186,7 @@
       constructor(client) {
         this.client = client;
         this.player_section = document.querySelector("aside");
+        this.audio = this.player_section.querySelector("audio#aside-audio");
       }
 
       /**
@@ -199,7 +200,8 @@
           // for later reuse. Since this has auth creds, not a good idea for anything beyond a toy project
           let artwork = this.client.build_request("getCoverArt", new URLSearchParams({id: metadata.song.coverArt}));
           this.player_section.querySelector("img#aside-cover").setAttribute("src", artwork);
-          this.player_section.querySelector("audio#aside-audio").setAttribute("src", this.client.build_request("stream", new URLSearchParams({id: metadata.song.id})));
+          this.audio.setAttribute("src", this.client.build_request("stream", new URLSearchParams({id: metadata.song.id})));
+          this.audio.play();
 
           if ("mediaSession" in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
