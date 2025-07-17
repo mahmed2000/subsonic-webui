@@ -246,7 +246,56 @@
     });
   </script>
 
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
+    :root {
+      --flex-dir: row;
+      --flex-main: 7;
+      --flex-aside: 3;
+    }
+
+    @media (orientation: portrait) {
+      :root {
+        --flex-dir: column;
+        --flex-main: 9;
+        --flex-aside: 1;
+      }
+    }
+
+    body {
+      margin: 0;
+      padding: 0.5rem;
+      font-family: system-ui;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: var(--flex-dir);
+    }
+
+    main {
+      flex: var(--flex-main);
+      overflow: scroll;
+    }
+
+    aside {
+      flex: var(--flex-aside);
+
+      audio {
+        width: 100%;
+      }
+
+      img {
+        height: 5rem;
+      }
+
+      &>div {
+        margin-left: 1rem;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -278,9 +327,13 @@
 
   <!-- Aside holds metadata about the playing song and the actual audio element. Side drawer on landscape, bottom drawer on portrait -->
   <aside>
-    <h2 id="aside-title"></h2>
-    <h4 id="aside-album"></h4>
-    <img src="about:blank" id="aside-cover" />
+    <div>
+      <img src="about:blank" id="aside-cover" />
+      <div style="display: inline-block;">
+        <h2 id="aside-title"></h2>
+        <h4 id="aside-album"></h4>
+      </div>
+    </div>
     <audio controls src="about:blank" id="aside-audio"></audio>
   </aside>
 </body>
