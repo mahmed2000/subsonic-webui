@@ -34,6 +34,7 @@
         // Why didn't I just do that? Spite and sunk cost. Mostly spite.
         let salt = "";
         for (let i = 0; i < 4; i++) {
+          // generate a random hex value and shove it into the salt string
           let rand = Math.floor(Math.random() * 255).toString(16).padStart(2, '0');
           salt = salt + rand;
         }
@@ -42,14 +43,18 @@
         params.append("t", token);
         params.append("s", salt);
 
+        // return as a string for src insertion for images and audio links
         return `${this.server}/rest/${view}?${params}`;
       }
 
       /**
       * @param {string} view
       * @param {URLSearchParams} params
+      * @throws {Error}
       */
       async json_request(view, params) {
+        // the salt and token effectively make this a guaranteed cache-bust
+        // better to make a hashmap that stores the view+params (before building) to check if already fetched
         let resp = (await (await fetch(this.build_request(view, params))).json())["subsonic-response"];
         if (resp.status != "ok") {
           throw new Error(resp.error.message);
@@ -97,6 +102,7 @@
             children = resp.indexes.child;
           }
 
+          // navidrome never lists any direct children of the root
           if (children) {
             for (let child of children) {
               if (child.isDir) {
@@ -115,8 +121,9 @@
 
         // part 2, add buttons for navigation
         let entries = [];
+        // not at root
         if (this.nav_chain.length > 0) {
-          entries.push(this.make_link(null, ".."));
+          entries.push(this.make_link(null, "[..]"));
         }
         for (let [id, name] of Object.entries(dirs)) {
           entries.push(this.make_link(id, name));
@@ -140,9 +147,11 @@
         button.type = "button";
         button.innerText = text;
         button.addEventListener("click", () => {
+          // link is an id to a folder
           if (dir_id) {
             this.populate_dir(dir_id);
             this.nav_chain.push(dir_id);
+            // null = go up one folder
           } else {
             this.populate_dir(this.nav_chain.length > 1 ? this.nav_chain[this.nav_chain.length - 2] : null);
             this.nav_chain.pop();
@@ -192,6 +201,7 @@
       */
       async play(song_id) {
         try {
+          // better solution would be to get the whole metadata object directly from the directory request that instantiated this, but oh well
           let metadata = await this.client.json_request("getSong", new URLSearchParams({id: song_id}));
           this.player_section.querySelector("h2#aside-title").innerText = metadata.song.title;
           this.player_section.querySelector("h4#aside-album").innerText = metadata.song.album;
@@ -209,6 +219,7 @@
             })
           }
         } catch (err) {
+          console.error(err);
           window.setInterval(this.play, 5000, song_id);
         }
       }
