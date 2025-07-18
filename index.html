@@ -86,11 +86,9 @@
           let children; // list of "child" objects.
           if (dir_id) {
             let resp = await this.client.json_request("getMusicDirectory", new URLSearchParams({id: dir_id}));
-            console.log(resp);
             children = resp.directory.child;
           } else {
             let resp = await this.client.json_request("getIndexes", new URLSearchParams());
-            console.log(resp);
             for (let index of resp.indexes.index) {
               for (let dir of index.artist) {
                 dirs[dir.id] = dir.name;
@@ -218,7 +216,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       const dialog = document.querySelector("dialog");
-      const err_msg = document.querySelector("form #error");
+      const err_msg = document.querySelector("dialog #error");
       dialog.showModal();
 
       let browser;
@@ -232,7 +230,7 @@
           let player = new Player(subsonic_handler);
           browser = new Browser(subsonic_handler, player);
         } catch (err) {
-          document.querySelector("form #error").innerText = err.toString();
+          err_msg.innerText = err.toString();
           // in about every conceivable network setup (maybe besides having the server on the same machine and requesting over loopback)
           // the modal should close from submission before the response comes back.
           // a better solution would simply be to preventDefault, but I am lazy.
@@ -325,6 +323,9 @@
     }
 
     dialog:modal {
+      width: 70vw;
+      height: 70vh;
+
       h1 {
         text-align: center;
       }
@@ -332,6 +333,26 @@
       p#error {
         color: red;
       }
+
+      form>div {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around;
+
+        label {
+          width: 40%;
+        }
+
+        input {
+          width: 40%;
+        }
+
+        button {
+          width: 70%;
+        }
+
+      }
+
     }
   </style>
 </head>
@@ -339,21 +360,22 @@
 <body>
   <!-- Dialog shown on load. Credentials API isn't standard yet across browsers, what can you do -->
   <dialog>
+    <h1>Subsonic Login</h1>
     <form id="auth" method="dialog">
-      <h1>Subsonic Login</h1>
-      <label for="auth-server">Server: </label>
-      <input id="auth-server" name="server" type="url" placeholder="https://demo.navidrome.org" required />
+      <div>
+        <label for="auth-server">Server: </label>
+        <input id="auth-server" name="server" type="url" placeholder="https://demo.navidrome.org" required />
 
-      <label for="auth-name">Username: </label>
-      <input id="auth-name" name="name" type="text" placeholder="demo" required />
+        <label for="auth-name">Username: </label>
+        <input id="auth-name" name="name" type="text" placeholder="demo" required />
 
-      <label for="auth-pass">Password: </label>
-      <input id="auth-pass" name="password" type="password" placeholder="demo" required />
+        <label for="auth-pass">Password: </label>
+        <input id="auth-pass" name="password" type="password" placeholder="demo" required />
 
-      <button type="submit">Login</button>
-
-      <p id="error"></p>
+        <button type="submit">Login</button>
+      </div>
     </form>
+    <p id="error"></p>
   </dialog>
 
   <!-- Main holds directory nav. Button to return to root for convenience. Will follow the same conventions as github/forgejo having ".." to go up one dir. -->
