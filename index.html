@@ -278,6 +278,33 @@
     main {
       flex: var(--flex-main);
       overflow: scroll;
+
+      &>button::before {
+        content: '\2302  ';
+      }
+
+      button {
+        padding: 1em;
+        width: 100%;
+        text-align: left;
+      }
+
+      li.dir {
+        button::before {
+          content: '\1F4C1  ';
+        }
+      }
+
+      li.song {
+        button::before {
+          content: '\25B6  ';
+        }
+      }
+
+      li {
+        list-style: none;
+
+      }
     }
 
     aside {
@@ -288,11 +315,22 @@
       }
 
       img {
-        height: 5rem;
+        height: max(10vw, 100px);
       }
 
       &>div {
-        margin-left: 1rem;
+        margin-left: 1em;
+        display: inline-block;
+      }
+    }
+
+    dialog:modal {
+      h1 {
+        text-align: center;
+      }
+
+      p#error {
+        color: red;
       }
     }
   </style>
@@ -321,6 +359,7 @@
   <!-- Main holds directory nav. Button to return to root for convenience. Will follow the same conventions as github/forgejo having ".." to go up one dir. -->
   <main>
     <button id="dir-reset" type="submit">Root</button>
+    <hr />
     <ul id="curr-dir">
     </ul>
   </main>
