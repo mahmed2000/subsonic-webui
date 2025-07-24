@@ -272,6 +272,10 @@
     }
 
     @media (orientation: portrait) {
+      dialog form * {
+        font-size: 2vh;
+      }
+
       :root {
         --flex-dir: column;
         --flex-main: 9;
@@ -342,8 +346,6 @@
     }
 
     dialog:modal {
-      zoom: 2.5;
-
       h1 {
         text-align: center;
       }
@@ -359,11 +361,11 @@
           justify-content: space-around;
 
           label {
-            width: 40%;
+            width: 30%;
           }
 
           input {
-            width: 40%;
+            width: 60%;
           }
 
           button {
