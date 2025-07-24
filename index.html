@@ -227,6 +227,11 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       const dialog = document.querySelector("dialog");
+
+      dialog.addEventListener("cancel", (ev) => {
+        ev.preventDefault();
+      })
+
       const err_msg = document.querySelector("dialog #error");
       dialog.showModal();
 
@@ -278,8 +283,8 @@
       margin: 0;
       padding: 0.5rem;
       font-family: system-ui;
-      height: 100vh;
-      width: 100vw;
+      height: 100dvh;
+      width: 100dvw;
       display: flex;
       flex-direction: var(--flex-dir);
     }
@@ -322,6 +327,7 @@
 
       audio {
         width: 100%;
+        zoom: 1.5;
         padding: 1em;
       }
 
@@ -336,8 +342,7 @@
     }
 
     dialog:modal {
-      width: 70vw;
-      height: 70vh;
+      zoom: 2.5;
 
       h1 {
         text-align: center;
@@ -347,23 +352,24 @@
         color: red;
       }
 
-      form>div {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-around;
+      form {
+        &>div {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: space-around;
 
-        label {
-          width: 40%;
+          label {
+            width: 40%;
+          }
+
+          input {
+            width: 40%;
+          }
+
+          button {
+            width: 70%;
+          }
         }
-
-        input {
-          width: 40%;
-        }
-
-        button {
-          width: 70%;
-        }
-
       }
 
     }
