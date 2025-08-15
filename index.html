@@ -267,8 +267,9 @@
 
     :root {
       --flex-dir: row;
-      --flex-main: 7;
-      --flex-aside: 3;
+      --flex-main: 6;
+      --flex-aside: 4;
+      --audio-zoom: 1;
     }
 
     @media (orientation: portrait) {
@@ -280,10 +281,12 @@
         --flex-dir: column;
         --flex-main: 9;
         --flex-aside: 1;
+        --audio-zoom: 3;
       }
     }
 
     body {
+      font-size: clamp(2vh, 2em, 4vh);
       margin: 0;
       padding: 0.5rem;
       font-family: system-ui;
@@ -302,7 +305,7 @@
       }
 
       button {
-        font-size: clamp(1vh, 1em, 3vh);
+        font-size: inherit;
         padding: 1em;
         width: 100%;
         text-align: left;
@@ -322,7 +325,10 @@
 
       li {
         list-style: none;
+      }
 
+      ul {
+        padding-left: 0;
       }
     }
 
@@ -331,12 +337,11 @@
 
       audio {
         width: 100%;
-        zoom: 1.5;
-        padding: 1em;
+        zoom: var(--audio-zoom);
       }
 
       img {
-        height: max(10vw, 100px);
+        height: max(15vw, 200px);
       }
 
       &>div {
