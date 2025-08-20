@@ -4,36 +4,19 @@
 <head>
   <title>Subsonic Webui</title>
   <script>
-    class UnauthError extends Error {
-      constructor(...args) {
-        super(...args);
-        this.name = "UnauthError";
-      }
-    }
-
     class Browser {
       constructor() {
         this.nav_chain = [];
       }
 
       async repopulate() {
-        let token = sessionStorage.getItem("token");
-        if (token === null) {
-          console.debug("Browser.repopulate() called without posession of token!");
-        }
         if (this.nav_chain.length === 0) {
           var target = "%00"; // magic NULL byte to tell backend this is root dir
         } else {
           var target = this.nav_chain[this.nav_chain.length - 1];
         }
-        let entries_resp = await fetch(`/api/list/${target}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        if (entries_resp.status === 401) {
-          throw new UnauthError("Token invalid");
-        } else if (entries_resp.status !== 200) {
+        let entries_resp = await fetch(`/api/list/${target}`);
+        if (entries_resp.status !== 200) {
           return
         }
 
@@ -58,13 +41,7 @@
               } else {
                 this.nav_chain.push(entry.id);
               }
-              try {
-                await this.repopulate();
-              } catch (err) {
-                if (err instanceof UnauthError) {
-                  document.dispatchEvent(new Event("reauth"));
-                }
-              }
+              this.repopulate();
             });
           } else {
             node.classList.add("song");
@@ -93,65 +70,8 @@
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
-      const dialog = document.querySelector("dialog");
-      dialog.addEventListener("cancel", (ev) => {
-        ev.preventDefault();
-      });
-
-      document.addEventListener("reauth", () => {
-        console.log("reauth");
-        dialog.showModal();
-      });
-
-
-      const login_form = dialog.querySelector("form");
-
       let browser = new Browser();
-
-      login_form.addEventListener("submit", async (ev) => {
-        let creds = new FormData(ev.target);
-        try {
-          let resp = await fetch("/api/login", {
-            method: "POST",
-            body: JSON.stringify({
-              server: creds.get("server"),
-              username: creds.get("name"),
-              password: creds.get("password"),
-            })
-          });
-          if (resp.status !== 200) {
-            throw new UnauthError("Token Invalid");
-          } else {
-            let resp_reader = resp.body.getReader();
-            let token = "";
-            while (true) {
-              let chunk = await resp_reader.read();
-              if (chunk.done) {
-                break
-              }
-              token += String.fromCharCode(...chunk.value);
-            }
-            sessionStorage.setItem("token", token);
-            browser.repopulate();
-          }
-        } catch (err) {
-          console.error(err);
-          document.dispatchEvent(new Event("reauth"));
-        }
-      })
-
-      if (sessionStorage.getItem("token") === null) {
-        dialog.showModal();
-      } else {
-        try {
-          await browser.repopulate();
-        } catch (err) {
-          if (err instanceof UnauthError) {
-            document.dispatchEvent(new Event("reauth"));
-          }
-        }
-      }
-
+      browser.repopulate();
     });
   </script>
 
@@ -244,60 +164,10 @@
         display: inline-block;
       }
     }
-
-    dialog:modal {
-      h1 {
-        text-align: center;
-      }
-
-      p#error {
-        color: red;
-      }
-
-      form {
-        &>div {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: space-around;
-
-          label {
-            width: 30%;
-          }
-
-          input {
-            width: 60%;
-          }
-
-          button {
-            width: 70%;
-          }
-        }
-      }
-
-    }
   </style>
 </head>
 
 <body>
-  <!-- Dialog shown on load. Credentials API isn't standard yet across browsers, what can you do -->
-  <dialog>
-    <h1>Subsonic Login</h1>
-    <form id="auth" method="dialog">
-      <div>
-        <label for="auth-server">Server: </label>
-        <input id="auth-server" name="server" type="url" placeholder="https://demo.navidrome.org" required />
-
-        <label for="auth-name">Username: </label>
-        <input id="auth-name" name="name" type="text" placeholder="demo" required />
-
-        <label for="auth-pass">Password: </label>
-        <input id="auth-pass" name="password" type="password" placeholder="demo" required />
-
-        <button type="submit">Login</button>
-      </div>
-    </form>
-  </dialog>
-
   <!-- Main holds directory nav. Button to return to root for convenience. Will follow the same conventions as github/forgejo having ".." to go up one dir. -->
   <main>
     <button id="dir-reset" type="submit">Root</button>
