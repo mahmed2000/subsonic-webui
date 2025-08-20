@@ -5,8 +5,9 @@
   <title>Subsonic Webui</title>
   <script>
     class Browser {
-      constructor() {
+      constructor(player) {
         this.nav_chain = [];
+        this.player = player;
       }
 
       async repopulate() {
@@ -35,7 +36,7 @@
           node_button.type = "button";
           if (entry.isDir) {
             node.classList.add("dir");
-            node_button.addEventListener("click", async () => {
+            node_button.addEventListener("click", () => {
               if (entry.name == "[..]") {
                 this.nav_chain.pop();
               } else {
@@ -45,6 +46,9 @@
             });
           } else {
             node.classList.add("song");
+            node_button.addEventListener("click", () => {
+              this.player.play(entry.name, entry.album, entry.coverId, entry.id);
+            });
           }
           node_button.innerText = entry.name;
           node.insertAdjacentElement("afterbegin", node_button);
@@ -65,12 +69,27 @@
 
       play(title, album, cover_id, song_id) {
         this.title.innerText = title;
-        this.album.innerText = album;
+        this.album.innerText = album ? album : "";
+        this.cover.src = cover_id ? `/api/cover/${cover_id}` : "about:blank";
+        this.audio.src = `/api/stream/${song_id}`;
+        this.audio.play();
+
+        if (navigator.mediaSession) {
+          let metadata = new MediaMetadata({
+            album: album,
+            title: title,
+          });
+          if (cover_id !== undefined) {
+            metadata.artwork = [{src: `/api/cover/${cover_id}`}];
+          }
+          navigator.mediaSession.metadata = metadata;
+        }
       }
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
-      let browser = new Browser();
+      let player = new Player();
+      let browser = new Browser(player);
       browser.repopulate();
     });
   </script>
