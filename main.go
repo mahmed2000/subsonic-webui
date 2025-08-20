@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -119,6 +120,48 @@ func main() {
 				w.Header().Add("Content-Length", fmt.Sprintf("%d", len(data)))
 				w.WriteHeader(http.StatusOK)
 				w.Write(data)
+			}
+		}
+	})
+	api_r.Get("/stream/{song_id}", func(w http.ResponseWriter, r *http.Request) {
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if auth, err := validate_jwt(token); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+		} else {
+			server_url, _ := url.Parse(auth.Server)
+			c := client.SubsonicClient{
+				Server:   *server_url,
+				Username: auth.Username,
+				Password: auth.Password,
+			}
+			if resp, err := c.Stream(chi.URLParam(r, "song_id")); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				w.Header().Add("Content-Type", resp.Header.Get("Content-Type"))
+				w.Header().Add("Content-Length", resp.Header.Get("Content-Length"))
+				w.WriteHeader(http.StatusOK)
+				io.Copy(w, resp.Body)
+			}
+		}
+	})
+	api_r.Get("/cover/{cover_id}", func(w http.ResponseWriter, r *http.Request) {
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if auth, err := validate_jwt(token); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+		} else {
+			server_url, _ := url.Parse(auth.Server)
+			c := client.SubsonicClient{
+				Server:   *server_url,
+				Username: auth.Username,
+				Password: auth.Password,
+			}
+			if resp, err := c.Cover(chi.URLParam(r, "cover_id")); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				w.Header().Add("Content-Type", resp.Header.Get("Content-Type"))
+				w.Header().Add("Content-Length", resp.Header.Get("Content-Length"))
+				w.WriteHeader(http.StatusOK)
+				io.Copy(w, resp.Body)
 			}
 		}
 	})

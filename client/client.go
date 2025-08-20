@@ -24,7 +24,10 @@ type param struct {
 
 var rand_src = rand.New(rand.NewSource(time.Now().Unix()))
 
-var ErrBadStatus = fmt.Errorf("Remote server returned non-200 OK response")
+var (
+	ErrBadStatus = fmt.Errorf("Remote server returned non-200 OK response")
+	ErrNotMedia  = fmt.Errorf("Media endpoint returned non-media content")
+)
 
 func validate_api(r *http.Response) (*subsonicResponse, error) {
 	d := json.NewDecoder(r.Body)
@@ -135,6 +138,34 @@ func (c *SubsonicClient) Dir(id string) ([]Entry, error) {
 
 		return entries, nil
 	}
+}
+
+func (c *SubsonicClient) Stream(id string) (*http.Response, error) {
+	resp, err := c.get("/stream", []param{{
+		query: "id",
+		value: id,
+	}})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Header.Get("Content-Type") == "application/json" {
+		return nil, ErrNotMedia
+	}
+	return resp, nil
+}
+
+func (c *SubsonicClient) Cover(id string) (*http.Response, error) {
+	resp, err := c.get("/getCoverArt", []param{{
+		query: "id",
+		value: id,
+	}})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Header.Get("Content-Type") == "application/json" {
+		return nil, ErrNotMedia
+	}
+	return resp, nil
 }
 
 type response struct {
