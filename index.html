@@ -19,7 +19,7 @@
           var target = this.nav_chain[this.nav_chain.length - 1];
         }
         let entries_resp = await fetch(`/api/list/${target}`);
-        if (entries_resp.status !== 200) { // shouldn't be possible, but handle it anyway
+        if (entries_resp.status !== 200) { // shouldn't be normal, but handle it anyway
           return
         }
 

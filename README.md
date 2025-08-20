@@ -4,18 +4,32 @@ A feature-incomplete subsonic music "player"
 
 It... exists, unfortunately.
 
+At this point, its more of a proxy, than a strict client
+
+# Installation
+
+1. Install [Go](https://go.dev/)
+2. Clone this repo, and `cd` in.
+3. Run `go build`, should spit out an executable binary named `subsonic-webui`, see usage
+
 # Usage
 
-Its a single HTML page. Open it as a file, serve it over a bash script/python flask app/rust axum server/from nginx/idc. Just make sure CORS allows loading the following:
+This expects at minimum 3 parameters set from environment variables:
 
-The only dependency is on https://pajhome.org.uk/crypt/md5/md5.js. If for some reason that goes down, hook up the script include to the copy in this repo and however you serve it.
+- SUBSONIC_SERVER: The scheme + domain for a given subsonic compatible server
+- SUBSONIC_USERNAME: The username
+- SUBSONIC_PASSWORD: The password
 
-Opens to an auth modal. Placeholder values will be set to the navidrome demo site as is. Creds also here for convenience:
+For example, in order:
+- https://demo.navidrome.org
+- demo
+- demo
 
-Server: https://demo.navidrome.org
-Username: demo
-Password: demo
+With these set, run the binary from above:
 
-The server must support the token-salt auth method documented here: https://opensubsonic.netlify.app/docs/api-reference/. Basically means not [LMS](github.com/epoupon/lms).
+`./subsonic-webui [localhost:8080]`
 
+It takes an optional argument to configure the bound socket interface and port. By default (unsupplied arg), this is set to localhost:8080.
+
+After starting, open `http://localhost:8080` in your browser of choice.
 
