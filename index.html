@@ -62,7 +62,7 @@
       constructor() {
         let aside = document.querySelector("aside");
         this.title = aside.querySelector("h2");
-        this.album = aside.querySelector("h4");
+        this.album = aside.querySelector("h5");
         this.cover = aside.querySelector("img");
         this.audio = aside.querySelector("audio");
       }
@@ -125,7 +125,7 @@
     }
 
     body {
-      font-size: clamp(2vh, 2em, 4vh);
+      font-size: clamp(3vh, 2em, 4vh);
       margin: 0;
       padding: 0.5rem;
       font-family: system-ui;
@@ -183,10 +183,20 @@
         height: max(15vw, 200px);
       }
 
+
       &>div {
-        margin-left: 1em;
-        display: inline-block;
+        display: flex;
+
+        &>div {
+          display: inline-block;
+        }
       }
+    }
+
+    h2,
+    h5 {
+      margin-top: 0;
+      margin-bottom: 0;
     }
   </style>
 </head>
@@ -204,9 +214,9 @@
   <aside>
     <div>
       <img src="about:blank" id="aside-cover" />
-      <div style="display: inline-block;">
+      <div>
         <h2 id="aside-title"></h2>
-        <h4 id="aside-album"></h4>
+        <h5 id="aside-album"></h5>
       </div>
     </div>
     <audio controls src="about:blank" id="aside-audio"></audio>
