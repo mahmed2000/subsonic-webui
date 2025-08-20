@@ -2,7 +2,6 @@ package client
 
 import (
 	"crypto/md5"
-
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -29,6 +28,8 @@ var (
 	ErrNotMedia  = fmt.Errorf("Media endpoint returned non-media content")
 )
 
+// helper function, just checks if the response has the error field set, which means the response is invalid for
+// whatever is trying to call it. Also ensures any response is valid json, and fits the subsonic response schema
 func validate_api(r *http.Response) (*subsonicResponse, error) {
 	d := json.NewDecoder(r.Body)
 	var subsonic_r response
@@ -41,6 +42,7 @@ func validate_api(r *http.Response) (*subsonicResponse, error) {
 	return &subsonic_r.SubsonicResponse, nil
 }
 
+// Test connectivity and credentials
 func (c *SubsonicClient) Ping() error {
 	resp, err := c.get("/ping", nil)
 	if err != nil {
@@ -52,9 +54,12 @@ func (c *SubsonicClient) Ping() error {
 	return nil
 }
 
+// main func, appends needed params from https://opensubsonic.netlify.app/docs/api-reference/
+// performs the actual request and returns the response object, or an error
 func (c *SubsonicClient) get(path string, extra_params []param) (*http.Response, error) {
 	req_url := c.Server
 	req_url.Path, _ = url.JoinPath("rest", path)
+
 	q := make(url.Values)
 	q.Add("f", "json")
 	q.Add("v", "1.16.0")
@@ -80,6 +85,7 @@ func (c *SubsonicClient) get(path string, extra_params []param) (*http.Response,
 	return resp, nil
 }
 
+// fetches the index content, and transforms them into standard "Entry" objects
 func (c *SubsonicClient) Indexes() ([]Entry, error) {
 	resp, err := c.get("/getIndexes", nil)
 	if err != nil {
@@ -90,6 +96,7 @@ func (c *SubsonicClient) Indexes() ([]Entry, error) {
 	} else {
 		entries := make([]Entry, 0)
 		for _, i := range index_resp.Indexes.Index {
+			// All indexes are necessarily Dirs...
 			for _, j := range i.Artist {
 				entries = append(entries, Entry{
 					ID:      j.ID,
@@ -101,6 +108,7 @@ func (c *SubsonicClient) Indexes() ([]Entry, error) {
 			}
 		}
 		for _, i := range index_resp.Indexes.Child {
+			// ... but not all child's are files
 			entries = append(entries, Entry{
 				IsDir:   i.IsDir,
 				ID:      i.ID,
@@ -114,6 +122,8 @@ func (c *SubsonicClient) Indexes() ([]Entry, error) {
 	}
 }
 
+// /getMusicDirectory call
+// fetches dir content as a bunch of "Entry"s
 func (c *SubsonicClient) Dir(id string) ([]Entry, error) {
 	resp, err := c.get("/getMusicDirectory", []param{{
 		query: "id",
@@ -140,6 +150,7 @@ func (c *SubsonicClient) Dir(id string) ([]Entry, error) {
 	}
 }
 
+// "/stream"s a given song by its id.
 func (c *SubsonicClient) Stream(id string) (*http.Response, error) {
 	resp, err := c.get("/stream", []param{{
 		query: "id",
@@ -154,6 +165,7 @@ func (c *SubsonicClient) Stream(id string) (*http.Response, error) {
 	return resp, nil
 }
 
+// fetches cover art content by its url
 func (c *SubsonicClient) Cover(id string) (*http.Response, error) {
 	resp, err := c.get("/getCoverArt", []param{{
 		query: "id",
@@ -167,6 +179,9 @@ func (c *SubsonicClient) Cover(id string) (*http.Response, error) {
 	}
 	return resp, nil
 }
+
+// decoding and encoding structs.
+// see https://opensubsonic.netlify.app/docs/
 
 type response struct {
 	SubsonicResponse subsonicResponse `json:"subsonic-response"`

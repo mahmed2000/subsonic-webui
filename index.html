@@ -10,6 +10,8 @@
         this.player = player;
       }
 
+      // fetch children of current end of nav_chain,
+      // insert said children into the <ul> list
       async repopulate() {
         if (this.nav_chain.length === 0) {
           var target = "%00"; // magic NULL byte to tell backend this is root dir
@@ -17,11 +19,12 @@
           var target = this.nav_chain[this.nav_chain.length - 1];
         }
         let entries_resp = await fetch(`/api/list/${target}`);
-        if (entries_resp.status !== 200) {
+        if (entries_resp.status !== 200) { // shouldn't be possible, but handle it anyway
           return
         }
 
         let entries = await entries_resp.json();
+        // if not at root dir, insert a fake entry that targets the previous entry in the nav_chain (or NULL if would go to root)
         if (this.nav_chain.length > 0) {
           entries.unshift({
             id: this.nav_chain.length > 1 ? this.nav_chain[this.nav_chain.length - 2] : "%00",
@@ -37,7 +40,7 @@
           if (entry.isDir) {
             node.classList.add("dir");
             node_button.addEventListener("click", () => {
-              if (entry.name == "[..]") {
+              if (entry.name == "[..]") { // back navigation must pop instead of push
                 this.nav_chain.pop();
               } else {
                 this.nav_chain.push(entry.id);
@@ -70,7 +73,7 @@
       play(title, album, cover_id, song_id) {
         this.title.innerText = title;
         this.album.innerText = album ? album : "";
-        this.cover.src = cover_id ? `/api/cover/${cover_id}` : "about:blank";
+        this.cover.src = cover_id ? `/api/cover/${cover_id}` : "about:blank"; // if no cover ids, default back to about:blank
         this.audio.src = `/api/stream/${song_id}`;
         this.audio.play();
 
