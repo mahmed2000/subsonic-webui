@@ -91,6 +91,11 @@
       let player = new Player();
       let browser = new Browser(player);
       browser.repopulate();
+
+      document.querySelector("button#dir-reset").addEventListener("click", () => {
+        browser.nav_chain = [];
+        browser.repopulate();
+      })
     });
   </script>
 
