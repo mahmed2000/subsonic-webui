@@ -3,260 +3,139 @@
 
 <head>
   <title>Subsonic Webui</title>
-  <!-- MD5 implementation, because js doesn't have a builtin for it -->
-  <!-- Alternative would be to rely on plain password, the OSS POST extension or the OSS API key extension. -->
-  <script src="https://pajhome.org.uk/crypt/md5/md5.js"></script>
   <script>
-    class SubsonicHandler {
-      /**
-      * @param {string} server
-      * @param {string} username
-      * @param {string} password
-      */
-      constructor(server, username, password) {
-        this.username = username;
-        this.server = server;
-        this.password = password;
-      }
-
-      /**
-      * @param {string} view
-      * @param {URLSearchParams} params
-      */
-      build_request(view, params) {
-        // see https://opensubsonic.netlify.app/docs/api-reference/
-        params.append("u", this.username);
-        params.append("v", "1.16.0");
-        params.append("c", "subsonic-webui");
-        params.append("f", "json");
-
-        // ideally would use the crypto lib for both md5 and salt gen.
-        // Why didn't I just do that? Spite and sunk cost. Mostly spite.
-        let salt = "";
-        for (let i = 0; i < 4; i++) {
-          // generate a random hex value and shove it into the salt string
-          let rand = Math.floor(Math.random() * 255).toString(16).padStart(2, '0');
-          salt = salt + rand;
-        }
-
-        let token = hex_md5(`${this.password}${salt}`);
-        params.append("t", token);
-        params.append("s", salt);
-
-        // return as a string for src insertion for images and audio links
-        return `${this.server}/rest/${view}?${params}`;
-      }
-
-      /**
-      * @param {string} view
-      * @param {URLSearchParams} params
-      * @throws {Error}
-      */
-      async json_request(view, params) {
-        // the salt and token effectively make this a guaranteed cache-bust
-        // better to make a hashmap that stores the view+params (before building) to check if already fetched
-        let resp = (await (await fetch(this.build_request(view, params))).json())["subsonic-response"];
-        if (resp.status != "ok") {
-          throw new Error(resp.error.message);
-        }
-        return resp;
+    class UnauthError extends Error {
+      constructor(...args) {
+        super(...args);
+        this.name = "UnauthError";
       }
     }
 
-    class Browser {
-      /**
-      * @param {SubsonicHandler} client
-      * @param {Player} player
-      */
-      constructor(client, player) {
-        this.client = client;
-        this.player = player;
-        this.dir_listing = document.querySelector("ul#curr-dir");
-        this.nav_chain = [];
-
-        this.populate_dir(null);
-      }
-
-      /**
-      * @param {string | null} dir_id
-      */
-      async populate_dir(dir_id) {
-        let dirs = {};
-        let songs = {};
-        try {
-          // dir_id is either an id or null. Null indicates root, which doesn't have an ID with defined value across servers.
-          // getIndexes returns both "childs" and "indexes", essentially files and folders,
-          // get getMusicDirectory only returns "childs", which may be either files or folders.
-          // confused? good.
-          let children; // list of "child" objects.
-          if (dir_id) {
-            let resp = await this.client.json_request("getMusicDirectory", new URLSearchParams({id: dir_id}));
-            children = resp.directory.child;
-          } else {
-            let resp = await this.client.json_request("getIndexes", new URLSearchParams());
-            for (let index of resp.indexes.index) {
-              for (let dir of index.artist) {
-                dirs[dir.id] = dir.name;
-              }
-            }
-            children = resp.indexes.child;
-          }
-
-          // navidrome never lists any direct children of the root
-          if (children) {
-            for (let child of children) {
-              if (child.isDir) {
-                dirs[child.id] = child.title;
-              } else {
-                songs[child.id] = child.title;
-              }
-            }
-          }
-
-        } catch (err) {
-          console.error(err);
-          window.setTimeout(this.populate_dir, 5000, dir_id); // if something fails, try again. Only problem in active use should be networking, which nothing to do but test
-          return;
-        }
-
-        // part 2, add buttons for navigation
-        let entries = [];
-        // not at root
-        if (this.nav_chain.length > 0) {
-          entries.push(this.make_link(null, "[..]"));
-        }
-        for (let [id, name] of Object.entries(dirs)) {
-          entries.push(this.make_link(id, name));
-        }
-
-        for (let [id, name] of Object.entries(songs)) {
-          entries.push(this.make_play(id, name));
-        }
-
-        this.dir_listing.replaceChildren(...entries);
-      }
-
-      /**
-      * @param {string | null} dir_id
-      * @param {string} text
-      */
-      make_link(dir_id, text) {
-        let el = document.createElement("li");
-        el.classList.add("dir");
-        let button = document.createElement("button");
-        button.type = "button";
-        button.innerText = text;
-        button.addEventListener("click", () => {
-          // link is an id to a folder
-          if (dir_id) {
-            this.populate_dir(dir_id);
-            this.nav_chain.push(dir_id);
-            // null = go up one folder
-          } else {
-            this.populate_dir(this.nav_chain.length > 1 ? this.nav_chain[this.nav_chain.length - 2] : null);
-            this.nav_chain.pop();
-          }
-        });
-        el.replaceChildren(button);
-        return el;
-      }
-
-      /**
-      * @param {string | null} song_id
-      * @param {string} text
-      */
-      make_play(song_id, text) {
-        let el = document.createElement("li");
-        el.classList.add("song");
-        let button = document.createElement("button");
-        button.type = "button";
-        button.innerText = text;
-
-        button.addEventListener("click", () => {
-          this.player.play(song_id);
-        });
-
-        el.replaceChildren(button);
-        return el;
-      }
-
-      reset() {
-        this.nav_chain = [];
-        this.populate_dir(null);
-      }
-    }
-
-    class Player {
-      /**
-      * @param {SubsonicHandler} client
-      */
-      constructor(client) {
-        this.client = client;
-        this.player_section = document.querySelector("aside");
-        this.audio = this.player_section.querySelector("audio#aside-audio");
-      }
-
-      /**
-      * @param {string} song_id
-      */
-      async play(song_id) {
-        try {
-          // better solution would be to get the whole metadata object directly from the directory request that instantiated this, but oh well
-          let metadata = await this.client.json_request("getSong", new URLSearchParams({id: song_id}));
-          this.player_section.querySelector("h2#aside-title").innerText = metadata.song.title;
-          this.player_section.querySelector("h4#aside-album").innerText = metadata.song.album;
-          // for later reuse. Since this has auth creds, not a good idea for anything beyond a toy project
-          let artwork = this.client.build_request("getCoverArt", new URLSearchParams({id: metadata.song.coverArt}));
-          this.player_section.querySelector("img#aside-cover").setAttribute("src", artwork);
-          this.audio.setAttribute("src", this.client.build_request("stream", new URLSearchParams({id: metadata.song.id})));
-          this.audio.play();
-
-          if ("mediaSession" in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-              title: metadata.song.title,
-              album: metadata.song.album,
-              artwork: [{src: artwork}],
-            })
-          }
-        } catch (err) {
-          console.error(err);
-          window.setInterval(this.play, 5000, song_id);
-        }
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
       const dialog = document.querySelector("dialog");
-
       dialog.addEventListener("cancel", (ev) => {
         ev.preventDefault();
+      });
+
+      document.addEventListener("reauth", () => {
+        console.log("reauth");
+        dialog.showModal();
+      });
+
+      class Browser {
+        constructor() {
+          this.nav_chain = [];
+        }
+
+        async repopulate() {
+          let token = sessionStorage.getItem("token");
+          if (token === null) {
+            console.debug("Browser.repopulate() called without posession of token!");
+          }
+          if (this.nav_chain.length === 0) {
+            var target = "%00"; // magic NULL byte to tell backend this is root dir
+          } else {
+            var target = this.nav_chain[this.nav_chain.length - 1];
+          }
+          let entries_resp = await fetch(`/api/list/${target}`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          if (entries_resp.status === 401) {
+            throw new UnauthError("Token invalid");
+          } else if (entries_resp.status !== 200) {
+            return
+          }
+
+          let entries = await entries_resp.json();
+          if (this.nav_chain.length > 0) {
+            entries.unshift({
+              id: this.nav_chain.length > 1 ? this.nav_chain[this.nav_chain.length - 2] : "%00",
+              isDir: true,
+              name: "[..]"
+            });
+          }
+          let dir_items = [];
+          for (let entry of entries) {
+            let node = document.createElement("li");
+            let node_button = document.createElement("button");
+            node_button.type = "button";
+            if (entry.isDir) {
+              node.classList.add("dir");
+              node_button.addEventListener("click", async () => {
+                if (entry.name == "[..]") {
+                  this.nav_chain.pop();
+                } else {
+                  this.nav_chain.push(entry.id);
+                }
+                try {
+                  await this.repopulate();
+                } catch (err) {
+                  if (err instanceof UnauthError) {
+                    document.dispatchEvent(new Event("reauth"));
+                  }
+                }
+              });
+            } else {
+              node.classList.add("song");
+            }
+            node_button.innerText = entry.name;
+            node.insertAdjacentElement("afterbegin", node_button);
+            dir_items.push(node);
+          }
+          document.querySelector("ul#curr-dir").replaceChildren(...dir_items);
+        }
+      }
+
+      const login_form = dialog.querySelector("form");
+
+      let browser = new Browser();
+
+      login_form.addEventListener("submit", async (ev) => {
+        let creds = new FormData(ev.target);
+        try {
+          let resp = await fetch("/api/login", {
+            method: "POST",
+            body: JSON.stringify({
+              server: creds.get("server"),
+              username: creds.get("name"),
+              password: creds.get("password"),
+            })
+          });
+          if (resp.status !== 200) {
+            throw new UnauthError("Token Invalid");
+          } else {
+            let resp_reader = resp.body.getReader();
+            let token = "";
+            while (true) {
+              let chunk = await resp_reader.read();
+              if (chunk.done) {
+                break
+              }
+              token += String.fromCharCode(...chunk.value);
+            }
+            sessionStorage.setItem("token", token);
+            browser.repopulate();
+          }
+        } catch (err) {
+          console.error(err);
+          document.dispatchEvent(new Event("reauth"));
+        }
       })
 
-      const err_msg = document.querySelector("dialog #error");
-      dialog.showModal();
-
-      let browser;
-
-      document.querySelector("form#auth").addEventListener("submit", async (ev) => {
-        let creds = new FormData(ev.target);
-        let subsonic_handler = new SubsonicHandler(creds.get("server"), creds.get("name"), creds.get("password"));
+      if (sessionStorage.getItem("token") === null) {
+        dialog.showModal();
+      } else {
         try {
-          let resp = await subsonic_handler.json_request("ping", new URLSearchParams());
-          err_msg.innerText = "";
-          let player = new Player(subsonic_handler);
-          browser = new Browser(subsonic_handler, player);
+          await browser.repopulate();
         } catch (err) {
-          err_msg.innerText = err.toString();
-          // in about every conceivable network setup (maybe besides having the server on the same machine and requesting over loopback)
-          // the modal should close from submission before the response comes back.
-          // a better solution would simply be to preventDefault, but I am lazy.
-          dialog.showModal();
+          if (err instanceof UnauthError) {
+            document.dispatchEvent(new Event("reauth"));
+          }
         }
-      });
+      }
 
-      document.querySelector("main button#dir-reset").addEventListener("click", () => {
-        browser.reset();
-      });
     });
   </script>
 
@@ -401,7 +280,6 @@
         <button type="submit">Login</button>
       </div>
     </form>
-    <p id="error"></p>
   </dialog>
 
   <!-- Main holds directory nav. Button to return to root for convenience. Will follow the same conventions as github/forgejo having ".." to go up one dir. -->

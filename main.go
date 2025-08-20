@@ -49,7 +49,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "index/html")
+		w.Header().Add("Content-Type", "text/html")
 		w.Header().Add("Content-Length", fmt.Sprintf("%d", len(index)))
 		w.Write(index)
 	})
