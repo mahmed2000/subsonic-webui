@@ -11,6 +11,87 @@
       }
     }
 
+    class Browser {
+      constructor() {
+        this.nav_chain = [];
+      }
+
+      async repopulate() {
+        let token = sessionStorage.getItem("token");
+        if (token === null) {
+          console.debug("Browser.repopulate() called without posession of token!");
+        }
+        if (this.nav_chain.length === 0) {
+          var target = "%00"; // magic NULL byte to tell backend this is root dir
+        } else {
+          var target = this.nav_chain[this.nav_chain.length - 1];
+        }
+        let entries_resp = await fetch(`/api/list/${target}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (entries_resp.status === 401) {
+          throw new UnauthError("Token invalid");
+        } else if (entries_resp.status !== 200) {
+          return
+        }
+
+        let entries = await entries_resp.json();
+        if (this.nav_chain.length > 0) {
+          entries.unshift({
+            id: this.nav_chain.length > 1 ? this.nav_chain[this.nav_chain.length - 2] : "%00",
+            isDir: true,
+            name: "[..]"
+          });
+        }
+        let dir_items = [];
+        for (let entry of entries) {
+          let node = document.createElement("li");
+          let node_button = document.createElement("button");
+          node_button.type = "button";
+          if (entry.isDir) {
+            node.classList.add("dir");
+            node_button.addEventListener("click", async () => {
+              if (entry.name == "[..]") {
+                this.nav_chain.pop();
+              } else {
+                this.nav_chain.push(entry.id);
+              }
+              try {
+                await this.repopulate();
+              } catch (err) {
+                if (err instanceof UnauthError) {
+                  document.dispatchEvent(new Event("reauth"));
+                }
+              }
+            });
+          } else {
+            node.classList.add("song");
+          }
+          node_button.innerText = entry.name;
+          node.insertAdjacentElement("afterbegin", node_button);
+          dir_items.push(node);
+        }
+        document.querySelector("ul#curr-dir").replaceChildren(...dir_items);
+      }
+    }
+
+    class Player {
+      constructor() {
+        let aside = document.querySelector("aside");
+        this.title = aside.querySelector("h2");
+        this.album = aside.querySelector("h4");
+        this.cover = aside.querySelector("img");
+        this.audio = aside.querySelector("audio");
+      }
+
+      play(title, album, cover_id, song_id) {
+        this.title.innerText = title;
+        this.album.innerText = album;
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
       const dialog = document.querySelector("dialog");
       dialog.addEventListener("cancel", (ev) => {
@@ -22,71 +103,6 @@
         dialog.showModal();
       });
 
-      class Browser {
-        constructor() {
-          this.nav_chain = [];
-        }
-
-        async repopulate() {
-          let token = sessionStorage.getItem("token");
-          if (token === null) {
-            console.debug("Browser.repopulate() called without posession of token!");
-          }
-          if (this.nav_chain.length === 0) {
-            var target = "%00"; // magic NULL byte to tell backend this is root dir
-          } else {
-            var target = this.nav_chain[this.nav_chain.length - 1];
-          }
-          let entries_resp = await fetch(`/api/list/${target}`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
-          if (entries_resp.status === 401) {
-            throw new UnauthError("Token invalid");
-          } else if (entries_resp.status !== 200) {
-            return
-          }
-
-          let entries = await entries_resp.json();
-          if (this.nav_chain.length > 0) {
-            entries.unshift({
-              id: this.nav_chain.length > 1 ? this.nav_chain[this.nav_chain.length - 2] : "%00",
-              isDir: true,
-              name: "[..]"
-            });
-          }
-          let dir_items = [];
-          for (let entry of entries) {
-            let node = document.createElement("li");
-            let node_button = document.createElement("button");
-            node_button.type = "button";
-            if (entry.isDir) {
-              node.classList.add("dir");
-              node_button.addEventListener("click", async () => {
-                if (entry.name == "[..]") {
-                  this.nav_chain.pop();
-                } else {
-                  this.nav_chain.push(entry.id);
-                }
-                try {
-                  await this.repopulate();
-                } catch (err) {
-                  if (err instanceof UnauthError) {
-                    document.dispatchEvent(new Event("reauth"));
-                  }
-                }
-              });
-            } else {
-              node.classList.add("song");
-            }
-            node_button.innerText = entry.name;
-            node.insertAdjacentElement("afterbegin", node_button);
-            dir_items.push(node);
-          }
-          document.querySelector("ul#curr-dir").replaceChildren(...dir_items);
-        }
-      }
 
       const login_form = dialog.querySelector("form");
 
