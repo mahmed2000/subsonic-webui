@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	//go:embed static/index.html
+	//go:embed index.html
 	index []byte
 )
 
