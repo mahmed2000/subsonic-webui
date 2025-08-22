@@ -104,6 +104,18 @@ func main() {
 			w.Write(data)
 		}
 	})
+	api_r.Get("/track_info/{song_id}", func(w http.ResponseWriter, r *http.Request) {
+		if entry, err := c.SongInfo(chi.URLParam(r, "song_id")); err != nil {
+			w.WriteHeader(http.StatusBadGateway)
+		} else {
+			data, _ := json.Marshal(*entry)
+			w.Header().Add("Content-Type", "application/json")
+			w.Header().Add("Content-Length", fmt.Sprintf("%d", len(data)))
+			w.WriteHeader(http.StatusOK)
+			w.Write(data)
+
+		}
+	})
 	api_r.Get("/stream/{song_id}", func(w http.ResponseWriter, r *http.Request) {
 		if resp, err := c.Stream(chi.URLParam(r, "song_id")); err != nil {
 			w.WriteHeader(http.StatusBadGateway)

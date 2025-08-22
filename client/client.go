@@ -150,6 +150,28 @@ func (c *SubsonicClient) Dir(id string) ([]Entry, error) {
 	}
 }
 
+func (c *SubsonicClient) SongInfo(id string) (*Entry, error) {
+	resp, err := c.get("/getSong", []param{{
+		query: "id",
+		value: id,
+	}})
+	if err != nil {
+		return nil, err
+	}
+	if metadata, err := validate_api(resp); err != nil {
+		return nil, err
+	} else {
+		child := metadata.Song
+		return &Entry{
+			ID:      child.ID,
+			IsDir:   false,
+			Name:    child.Title,
+			Album:   child.Album,
+			CoverId: child.CoverId,
+		}, nil
+	}
+}
+
 // "/stream"s a given song by its id.
 func (c *SubsonicClient) Stream(id string) (*http.Response, error) {
 	resp, err := c.get("/stream", []param{{
@@ -192,6 +214,7 @@ type subsonicResponse struct {
 	Error     *subsonicError `json:"error"`
 	Indexes   *indexes       `json:"indexes"`
 	Directory *directory     `json:"directory"`
+	Song      *child         `json:"song"`
 }
 
 type subsonicError struct {

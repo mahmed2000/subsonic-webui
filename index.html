@@ -55,7 +55,7 @@
           } else {
             node.classList.add("song");
             node_button.addEventListener("click", () => {
-              this.player.play(entry.name, entry.album, entry.coverId, entry.id);
+              this.player.play(entry.id);
             });
           }
           node_button.innerText = entry.name;
@@ -78,7 +78,22 @@
         this.audio.addEventListener("error", () => document.dispatchEvent(new Event("ping-check-req")));
       }
 
-      play(title, album, cover_id, song_id) {
+      async play(song_id) {
+        try {
+          // the album reported by /getMusicDirectory is the parent folder's name instead of the actual album (at least in Gonic)
+          // this requires a call to /getSong to grab the correct value
+          let track_info_resp = await fetch(`/api/track_info/${song_id}`);
+          if (track_info_resp.status >= 400) {
+            throw new Error(`Bad status ${track_info.status}`);
+          }
+          let track_info = await track_info_resp.json();
+          var title = track_info.name;
+          var album = track_info.album;
+          var cover_id = track_info.coverId;
+        } catch (err) {
+          document.dispatchEvent(new Event("ping-check-req"));
+          return
+        }
         this.title.innerText = title;
         this.album.innerText = album ? album : "";
         this.cover.src = cover_id ? `/api/cover/${cover_id}` : "about:blank"; // if no cover ids, default back to about:blank
