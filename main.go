@@ -97,23 +97,14 @@ func main() {
 		if err != nil {
 			w.WriteHeader(http.StatusBadGateway)
 		} else {
-			data, _ := json.Marshal(entries)
-			w.Header().Add("Content-Type", "application/json")
-			w.Header().Add("Content-Length", fmt.Sprintf("%d", len(data)))
-			w.WriteHeader(http.StatusOK)
-			w.Write(data)
+			write_api_resp(entries, w)
 		}
 	})
 	api_r.Get("/track_info/{song_id}", func(w http.ResponseWriter, r *http.Request) {
 		if entry, err := c.SongInfo(chi.URLParam(r, "song_id")); err != nil {
 			w.WriteHeader(http.StatusBadGateway)
 		} else {
-			data, _ := json.Marshal(*entry)
-			w.Header().Add("Content-Type", "application/json")
-			w.Header().Add("Content-Length", fmt.Sprintf("%d", len(data)))
-			w.WriteHeader(http.StatusOK)
-			w.Write(data)
-
+			write_api_resp(entry, w)
 		}
 	})
 	api_r.Get("/stream/{song_id}", func(w http.ResponseWriter, r *http.Request) {
@@ -141,4 +132,12 @@ func main() {
 	if err := http.ListenAndServe(listen_addr, r); err != nil {
 		fmt.Println(err)
 	}
+}
+
+func write_api_resp(d any, w http.ResponseWriter) {
+	data, _ := json.Marshal(d)
+	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Content-Length", fmt.Sprintf("%d", len(data)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }

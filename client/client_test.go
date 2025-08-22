@@ -23,6 +23,8 @@ func TestClient(t *testing.T) {
 	} else {
 		if song_list, err := c.Dir(childs[0].ID); err != nil {
 			t.Fatal(err)
+		} else if metadata, err := c.SongInfo(song_list[0].ID); err != nil || metadata.Album == nil {
+			t.Fatal(err)
 		} else if _, err := c.Stream(song_list[0].ID); err != nil {
 			t.Fatal(err)
 		} else if _, err := c.Cover(*song_list[0].CoverId); err != nil {

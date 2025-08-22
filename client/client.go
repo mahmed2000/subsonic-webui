@@ -44,14 +44,8 @@ func validate_api(r *http.Response) (*subsonicResponse, error) {
 
 // Test connectivity and credentials
 func (c *SubsonicClient) Ping() error {
-	resp, err := c.get("/ping", nil)
-	if err != nil {
-		return err
-	}
-	if _, err := validate_api(resp); err != nil {
-		return err
-	}
-	return nil
+	_, err := c.api_get("/ping", nil)
+	return err
 }
 
 // main func, appends needed params from https://opensubsonic.netlify.app/docs/api-reference/
@@ -85,13 +79,19 @@ func (c *SubsonicClient) get(path string, extra_params []param) (*http.Response,
 	return resp, nil
 }
 
+func (c *SubsonicClient) api_get(path string, extra_params []param) (*subsonicResponse, error) {
+	if resp, err := c.get(path, extra_params); err != nil {
+		return nil, err
+	} else if data, err := validate_api(resp); err != nil {
+		return nil, err
+	} else {
+		return data, nil
+	}
+}
+
 // fetches the index content, and transforms them into standard "Entry" objects
 func (c *SubsonicClient) Indexes() ([]Entry, error) {
-	resp, err := c.get("/getIndexes", nil)
-	if err != nil {
-		return nil, err
-	}
-	if index_resp, err := validate_api(resp); err != nil {
+	if index_resp, err := c.api_get("/getIndexes", nil); err != nil {
 		return nil, err
 	} else {
 		entries := make([]Entry, 0)
@@ -125,14 +125,10 @@ func (c *SubsonicClient) Indexes() ([]Entry, error) {
 // /getMusicDirectory call
 // fetches dir content as a bunch of "Entry"s
 func (c *SubsonicClient) Dir(id string) ([]Entry, error) {
-	resp, err := c.get("/getMusicDirectory", []param{{
+	if dir_resp, err := c.api_get("/getMusicDirectory", []param{{
 		query: "id",
 		value: id,
-	}})
-	if err != nil {
-		return nil, err
-	}
-	if dir_resp, err := validate_api(resp); err != nil {
+	}}); err != nil {
 		return nil, err
 	} else {
 		entries := make([]Entry, 0)
@@ -151,17 +147,13 @@ func (c *SubsonicClient) Dir(id string) ([]Entry, error) {
 }
 
 func (c *SubsonicClient) SongInfo(id string) (*Entry, error) {
-	resp, err := c.get("/getSong", []param{{
+	if resp, err := c.api_get("/getSong", []param{{
 		query: "id",
 		value: id,
-	}})
-	if err != nil {
-		return nil, err
-	}
-	if metadata, err := validate_api(resp); err != nil {
+	}}); err != nil {
 		return nil, err
 	} else {
-		child := metadata.Song
+		child := resp.Song
 		return &Entry{
 			ID:      child.ID,
 			IsDir:   false,
