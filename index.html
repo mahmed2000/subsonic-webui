@@ -18,8 +18,13 @@
         } else {
           var target = this.nav_chain[this.nav_chain.length - 1];
         }
-        let entries_resp = await fetch(`/api/list/${target}`);
-        if (entries_resp.status !== 200) { // shouldn't be normal, but handle it anyway
+        try {
+          var entries_resp = await fetch(`/api/list/${target}`);
+          if (entries_resp.status !== 200) { // shouldn't be normal, but handle it anyway
+            throw new Error(`Bad status ${entries_resp.status}`)
+          }
+        } catch (err) {
+          document.dispatchEvent(new Event("ping-check-req"));
           return
         }
 
@@ -45,7 +50,7 @@
               } else {
                 this.nav_chain.push(entry.id);
               }
-              this.repopulate();
+              document.dispatchEvent(new Event("navigate"));
             });
           } else {
             node.classList.add("song");
@@ -64,10 +69,13 @@
     class Player {
       constructor() {
         let aside = document.querySelector("aside");
-        this.title = aside.querySelector("h2");
+        this.title = aside.querySelector("h3");
         this.album = aside.querySelector("h5");
         this.cover = aside.querySelector("img");
         this.audio = aside.querySelector("audio");
+
+        this.cover.addEventListener("error", () => document.dispatchEvent(new Event("ping-check-req")));
+        this.audio.addEventListener("error", () => document.dispatchEvent(new Event("ping-check-req")));
       }
 
       play(title, album, cover_id, song_id) {
@@ -93,12 +101,39 @@
     document.addEventListener("DOMContentLoaded", async () => {
       let player = new Player();
       let browser = new Browser(player);
-      browser.repopulate();
+
+      var checking_ping = false;
+      document.addEventListener("ping-check-req", async () => {
+        const dialog = document.querySelector("dialog");
+        if (checking_ping) { // don't stack duplicate pings
+          return
+        }
+        checking_ping = true; // poor man's mutex
+        try {
+          let ping = await fetch("/api/ping");
+          if (ping.status >= 400) {
+            throw new Error(`Bad status ${ping.status}`)
+          }
+          dialog.close();
+          checking_ping = false;
+        } catch (err) {
+          dialog.showModal();
+          dialog.querySelector("p.error").innerText = err.toString();
+          window.setTimeout(() => {
+            checking_ping = false;
+            document.dispatchEvent(new Event("ping-check-req"));
+          }, 10000);
+        }
+      });
+
+      document.addEventListener("navigate", () => browser.repopulate());
+
+      document.dispatchEvent(new Event("navigate"));
 
       document.querySelector("button#dir-reset").addEventListener("click", () => {
         browser.nav_chain = [];
-        browser.repopulate();
-      })
+        document.dispatchEvent(new Event("navigate"));
+      });
     });
   </script>
 
@@ -196,15 +231,23 @@
       }
     }
 
-    h2,
+    h3,
     h5 {
       margin-top: 0;
-      margin-bottom: 0;
+      margin-bottom: 0.5em;
+    }
+
+    .error {
+      color: red;
     }
   </style>
 </head>
 
 <body>
+  <dialog closedby="any">
+    <p>Connection to Subsonic server degraded</p>
+    <p class="error"></p>
+  </dialog>
   <!-- Main holds directory nav. Button to return to root for convenience. Will follow the same conventions as github/forgejo having ".." to go up one dir. -->
   <main>
     <button id="dir-reset" type="submit">Root</button>
@@ -218,7 +261,7 @@
     <div>
       <img src="about:blank" id="aside-cover" />
       <div>
-        <h2 id="aside-title"></h2>
+        <h3 id="aside-title"></h3>
         <h5 id="aside-album"></h5>
       </div>
     </div>

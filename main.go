@@ -75,6 +75,13 @@ func main() {
 
 	// subrouter for all paths on /api/
 	api_r := chi.NewRouter()
+	api_r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+		if err := c.Ping(); err != nil {
+			w.WriteHeader(http.StatusBadGateway)
+		} else {
+			w.WriteHeader(http.StatusNoContent)
+		}
+	})
 	api_r.Get("/list/{dir_id}", func(w http.ResponseWriter, r *http.Request) {
 		var entries []client.Entry
 		var err error
